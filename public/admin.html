@@ -6,31 +6,31 @@
   <title>Admin · Sarvarbek Jakhongirov</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Chakra+Petch:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="orb"></div>
   <div class="wrap">
     <header class="nav">
-      <a class="brand" href="/"><span class="logo"></span>SJ // PORTFOLIO</a>
+      <a class="brand" href="/"><span class="logo"></span>S.JAKHONGIROV</a>
       <nav class="nav-links">
-        <button class="btn ghost" id="logout" hidden>Logout</button>
+        <a class="btn ghost" href="/">Portfolio</a>
+        <button class="btn" id="logout" hidden>Logout</button>
       </nav>
     </header>
 
-    <section class="panel" id="login">
+    <section class="panel frame" id="login">
       <h1>Uplink</h1>
-      <p>Access the studio to publish HTML games into the portfolio grid.</p>
+      <p>Доступ к студии: публикация HTML-игр в витрину портфолио.</p>
       <label>Password</label>
       <input id="password" type="password" autocomplete="current-password" />
-      <div style="margin-top:16px"><button class="btn primary" id="loginBtn">Enter</button></div>
-      <p id="loginErr" style="color:#f472b6"></p>
+      <div style="margin-top:20px"><button class="btn primary" id="loginBtn">Enter</button></div>
+      <p id="loginErr" class="err"></p>
     </section>
 
-    <section class="panel" id="studio" hidden>
-      <h1>Upload node</h1>
-      <p>One HTML file. Name it, auto-capture a thumbnail from the first frame, publish a preview link.</p>
+    <section class="panel frame" id="studio" hidden>
+      <h1>Upload</h1>
+      <p>Один HTML-файл. Имя задаёте вы, превью снимается с первого кадра игры.</p>
       <label>Name</label>
       <input id="name" type="text" placeholder="Neon Racer" />
       <label>HTML file</label>
@@ -39,17 +39,51 @@
       <div class="preview-row" id="shotRow" hidden>
         <img id="shot" alt="thumbnail preview" />
         <div>
-          <div id="fileMeta" style="color:var(--muted);font-size:13px"></div>
-          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <div id="fileMeta" class="label"></div>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn" id="reshoot">Переснять кадр</button>
             <button class="btn primary" id="publish">Опубликовать</button>
           </div>
         </div>
       </div>
-      <div id="uploadErr" style="color:#f472b6"></div>
+      <div id="uploadErr" class="err"></div>
     </section>
 
-    <section class="panel" id="library" hidden>
+    <section class="panel frame" id="profilePanel" hidden>
+      <h1>Profile</h1>
+      <p>Данные о себе, стек и соцсети — сразу отображаются на главной.</p>
+
+      <label>Имя</label>
+      <input id="pName" type="text" placeholder="Sarvarbek Jakhongirov" />
+
+      <label>Роль / подзаголовок</label>
+      <input id="pRole" type="text" placeholder="Game developer · HTML runtime" />
+
+      <label>Описание в шапке</label>
+      <textarea id="pLead" rows="3" placeholder="Короткий текст под именем"></textarea>
+
+      <label>О себе (блок Profile)</label>
+      <textarea id="pAbout" rows="5" placeholder="Развёрнутый текст о себе"></textarea>
+
+      <label>Стек (через запятую)</label>
+      <input id="pStack" type="text" placeholder="Canvas 2D, WebGL, JavaScript" />
+
+      <div class="field-row">
+        <div>
+          <label>Telegram</label>
+          <input id="pTelegram" type="text" placeholder="@hphpteam" />
+        </div>
+        <div>
+          <label>Instagram</label>
+          <input id="pInstagram" type="text" placeholder="@sarvarplays" />
+        </div>
+      </div>
+
+      <div style="margin-top:22px"><button class="btn primary" id="saveProfile">Сохранить профиль</button></div>
+      <div id="profileErr" class="err"></div>
+    </section>
+
+    <section class="panel frame" id="library" hidden>
       <h1>Library</h1>
       <div class="admin-list" id="list"></div>
     </section>
@@ -61,6 +95,7 @@
     const login = document.getElementById("login");
     const studio = document.getElementById("studio");
     const library = document.getElementById("library");
+    const profilePanel = document.getElementById("profilePanel");
     const logout = document.getElementById("logout");
     const drop = document.getElementById("drop");
     const fileInput = document.getElementById("file");
@@ -88,9 +123,49 @@
       login.hidden = true;
       studio.hidden = false;
       library.hidden = false;
+      profilePanel.hidden = false;
       logout.hidden = false;
-      await refresh();
+      await Promise.all([refresh(), loadProfile()]);
     }
+
+    const PROFILE_FIELDS = {
+      name: "pName",
+      role: "pRole",
+      lead: "pLead",
+      about: "pAbout",
+      telegram: "pTelegram",
+      instagram: "pInstagram",
+    };
+
+    async function loadProfile() {
+      const { profile } = await fetch("/api/profile").then((r) => r.json());
+      for (const [key, id] of Object.entries(PROFILE_FIELDS)) {
+        document.getElementById(id).value = profile[key] || "";
+      }
+      document.getElementById("pStack").value = (profile.stack || []).join(", ");
+    }
+
+    document.getElementById("saveProfile").onclick = async () => {
+      const payload = { stack: document.getElementById("pStack").value.split(",") };
+      for (const [key, id] of Object.entries(PROFILE_FIELDS)) {
+        payload[key] = document.getElementById(id).value;
+      }
+      const r = await fetch("/api/admin/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        document.getElementById("profileErr").textContent = "Не удалось сохранить";
+        return;
+      }
+      const { profile } = await r.json();
+      document.getElementById("profileErr").textContent = "";
+      document.getElementById("pStack").value = profile.stack.join(", ");
+      document.getElementById("pTelegram").value = profile.telegram;
+      document.getElementById("pInstagram").value = profile.instagram;
+      showToast("Профиль сохранён");
+    };
 
     document.getElementById("loginBtn").onclick = async () => {
       const r = await fetch("/api/admin/login", {
@@ -181,12 +256,12 @@
       c.width = 1280; c.height = 720;
       const x = c.getContext("2d");
       const g = x.createLinearGradient(0, 0, 1280, 720);
-      g.addColorStop(0, "#12061f");
-      g.addColorStop(1, "#06141f");
+      g.addColorStop(0, "#04060c");
+      g.addColorStop(1, "#0b1622");
       x.fillStyle = g;
       x.fillRect(0, 0, 1280, 720);
-      x.fillStyle = "#f8fafc";
-      x.font = "700 64px Sora, sans-serif";
+      x.fillStyle = "#4df3ff";
+      x.font = "700 56px Orbitron, sans-serif";
       x.textAlign = "center";
       x.fillText(title.slice(0, 28), 640, 380);
       return new Promise((r) => c.toBlob(r, "image/png"));
@@ -245,7 +320,7 @@
           <img src="${game.thumbUrl}" alt="" />
           <div>
             <strong></strong>
-            <div style="color:var(--muted);font-size:12px">${location.origin}${game.playUrl}</div>
+            <div class="path">${location.origin}${game.playUrl}</div>
           </div>
           <div class="actions">
             <a class="btn" href="${game.playUrl}" target="_blank">Open</a>

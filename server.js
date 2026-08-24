@@ -11,7 +11,20 @@ const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, "data
 const GAMES_DIR = path.join(DATA_DIR, "games");
 const THUMBS_DIR = path.join(DATA_DIR, "thumbs");
 const CATALOG_PATH = path.join(DATA_DIR, "games.json");
+const PROFILE_PATH = path.join(DATA_DIR, "profile.json");
 const SAMPLE_PATH = path.join(__dirname, "samples", "pulse-orbit.html");
+
+const DEFAULT_PROFILE = {
+  name: "Sarvarbek Jakhongirov",
+  role: "Game developer · HTML runtime",
+  lead:
+    "Портфолио играбельных HTML-систем. Каждая сборка — один файл с постоянной ссылкой на превью и фреймом под 16:9, 9:16, 3:4, 4:3, 1:1 или авто-ориентацию.",
+  about:
+    "Собираю компактные игровые механики с высокой плотностью ощущений. Этот сайт — публичная витрина: загружаю сырой HTML-файл, снимаю превью с первого кадра и получаю ссылку, которую можно открыть с любого устройства.",
+  stack: ["Canvas 2D", "WebGL", "JavaScript", "Game feel", "UI systems"],
+  telegram: "@hphpteam",
+  instagram: "@sarvarplays",
+};
 
 const MAX_HTML_BYTES = 25 * 1024 * 1024;
 const sessions = new Map();
@@ -29,6 +42,47 @@ function readCatalog() {
 
 function writeCatalog(games) {
   fs.writeFileSync(CATALOG_PATH, JSON.stringify(games, null, 2));
+}
+
+function readProfile() {
+  try {
+    return { ...DEFAULT_PROFILE, ...JSON.parse(fs.readFileSync(PROFILE_PATH, "utf8")) };
+  } catch {
+    return { ...DEFAULT_PROFILE };
+  }
+}
+
+function text(value, fallback, max) {
+  const clean = String(value ?? "").trim().slice(0, max);
+  return clean || fallback;
+}
+
+function handle(value, fallback) {
+  const clean = String(value ?? "")
+    .trim()
+    .replace(/^https?:\/\/(t\.me|telegram\.me|www\.instagram\.com|instagram\.com)\//i, "")
+    .replace(/^@/, "")
+    .replace(/[^a-zA-Z0-9_.]/g, "")
+    .slice(0, 40);
+  return clean ? `@${clean}` : fallback;
+}
+
+function sanitizeProfile(input) {
+  const stack = Array.isArray(input?.stack)
+    ? input.stack
+    : String(input?.stack || "").split(",");
+  return {
+    name: text(input?.name, DEFAULT_PROFILE.name, 80),
+    role: text(input?.role, DEFAULT_PROFILE.role, 120),
+    lead: text(input?.lead, DEFAULT_PROFILE.lead, 600),
+    about: text(input?.about, DEFAULT_PROFILE.about, 1200),
+    stack: stack
+      .map((item) => String(item).trim().slice(0, 40))
+      .filter(Boolean)
+      .slice(0, 16),
+    telegram: handle(input?.telegram, ""),
+    instagram: handle(input?.instagram, ""),
+  };
 }
 
 function slugify(name) {
@@ -84,7 +138,7 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "8mb" }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
+app.use(express.static(path.join(__dirname, "public"), { maxAge: 0, etag: true }));
 
 function requireAdmin(req, res, next) {
   const token = req.cookies.sp_admin;
@@ -97,6 +151,16 @@ function requireAdmin(req, res, next) {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/api/profile", (_req, res) => {
+  res.json({ profile: readProfile() });
+});
+
+app.put("/api/admin/profile", requireAdmin, (req, res) => {
+  const profile = sanitizeProfile({ ...readProfile(), ...req.body });
+  fs.writeFileSync(PROFILE_PATH, JSON.stringify(profile, null, 2));
+  res.json({ profile });
 });
 
 app.get("/api/games", (_req, res) => {
@@ -250,15 +314,15 @@ app.get("/media/:id/thumb.svg", (req, res) => {
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#05070a"/>
-      <stop offset="1" stop-color="#08151a"/>
+      <stop offset="0" stop-color="#04060c"/>
+      <stop offset="1" stop-color="#0b1622"/>
     </linearGradient>
   </defs>
   <rect width="1280" height="720" fill="url(#g)"/>
-  <rect x="0" y="0" width="1280" height="720" fill="none" stroke="#00ffe0" stroke-opacity=".35"/>
-  <circle cx="980" cy="160" r="220" fill="#ff2bd6" opacity=".2"/>
-  <circle cx="240" cy="560" r="260" fill="#00ffe0" opacity=".14"/>
-  <text x="640" y="370" text-anchor="middle" font-family="Orbitron, Arial, sans-serif" font-size="56" fill="#00ffe0" font-weight="700">${label}</text>
+  <circle cx="980" cy="160" r="220" fill="#ff3ea5" opacity=".18"/>
+  <circle cx="240" cy="560" r="260" fill="#4df3ff" opacity=".14"/>
+  <rect x="40" y="40" width="1200" height="640" fill="none" stroke="#4df3ff" stroke-opacity=".3"/>
+  <text x="640" y="378" text-anchor="middle" font-family="Orbitron, Arial, sans-serif" font-size="56" fill="#4df3ff" font-weight="700">${label}</text>
 </svg>`;
   res.setHeader("Cache-Control", "no-store");
   res.type("svg").send(svg);
