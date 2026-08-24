@@ -21,11 +21,12 @@ npm start
 
 ## Деплой на Railway через GitHub
 
-1. Создайте репозиторий и запушьте этот проект.
-2. В Railway: **New Project → Deploy from GitHub repo**.
-3. Добавьте переменную `ADMIN_PASSWORD` — пароль админки.
-4. Для сохранения игр между редеплоями добавьте **Volume**:
+1. Railway: **New Project → Deploy from GitHub repo** → `foteam/sarvarplays`.
+2. В **Settings** сервиса ветка должна быть **`master`** (не `main`), Autodeploy включён.
+3. Переменная: `ADMIN_PASSWORD`.
+4. Volume, чтобы игры и профиль не стирались:
    - Mount path: `/app/data`
    - Variable: `DATA_DIR=/app/data`
+5. После пуша откройте **Deployments**. Если новый коммит не стартовал: `Cmd+K` → **Deploy Latest Commit**.
 
-После деплоя сайт будет на `https://your-app.up.railway.app`. Игры открываются как `https://your-app.up.railway.app/play/<id>`.
+Сайт: `https://your-app.up.railway.app`. Игры: `/play/<id>`.

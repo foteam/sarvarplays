@@ -7,7 +7,24 @@ const multer = require("multer");
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
-const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, "data"));
+const ASSET_VERSION = "20260824";
+
+function resolveDataDir() {
+  const preferred = path.resolve(process.env.DATA_DIR || path.join(__dirname, "data"));
+  try {
+    fs.mkdirSync(path.join(preferred, "games"), { recursive: true });
+    fs.mkdirSync(path.join(preferred, "thumbs"), { recursive: true });
+    return preferred;
+  } catch (err) {
+    const fallback = path.join(__dirname, "data");
+    console.error(`DATA_DIR ${preferred} is not writable, using ${fallback}`, err.message);
+    fs.mkdirSync(path.join(fallback, "games"), { recursive: true });
+    fs.mkdirSync(path.join(fallback, "thumbs"), { recursive: true });
+    return fallback;
+  }
+}
+
+const DATA_DIR = resolveDataDir();
 const GAMES_DIR = path.join(DATA_DIR, "games");
 const THUMBS_DIR = path.join(DATA_DIR, "thumbs");
 const CATALOG_PATH = path.join(DATA_DIR, "games.json");
@@ -29,8 +46,15 @@ const DEFAULT_PROFILE = {
 const MAX_HTML_BYTES = 25 * 1024 * 1024;
 const sessions = new Map();
 
-fs.mkdirSync(GAMES_DIR, { recursive: true });
-fs.mkdirSync(THUMBS_DIR, { recursive: true });
+function readProfile() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(PROFILE_PATH, "utf8"));
+    const stack = Array.isArray(saved.stack) ? saved.stack : DEFAULT_PROFILE.stack;
+    return { ...DEFAULT_PROFILE, ...saved, stack };
+  } catch {
+    return { ...DEFAULT_PROFILE, stack: [...DEFAULT_PROFILE.stack] };
+  }
+}
 
 function readCatalog() {
   try {
@@ -42,14 +66,6 @@ function readCatalog() {
 
 function writeCatalog(games) {
   fs.writeFileSync(CATALOG_PATH, JSON.stringify(games, null, 2));
-}
-
-function readProfile() {
-  try {
-    return { ...DEFAULT_PROFILE, ...JSON.parse(fs.readFileSync(PROFILE_PATH, "utf8")) };
-  } catch {
-    return { ...DEFAULT_PROFILE };
-  }
 }
 
 function text(value, fallback, max) {
@@ -150,7 +166,7 @@ function requireAdmin(req, res, next) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, version: ASSET_VERSION });
 });
 
 app.get("/api/profile", (_req, res) => {
@@ -284,12 +300,17 @@ app.delete("/api/admin/games/:id", requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+function sendHtml(res, file) {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(file);
+}
+
 app.get("/play/:id", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "play.html"));
+  sendHtml(res, path.join(__dirname, "public", "play.html"));
 });
 
 app.get("/admin", (_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin.html"));
+  sendHtml(res, path.join(__dirname, "public", "admin.html"));
 });
 
 app.get("/raw/:id", (req, res) => {
@@ -330,9 +351,10 @@ app.get("/media/:id/thumb.svg", (req, res) => {
 
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  sendHtml(res, path.join(__dirname, "public", "index.html"));
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Sarvar Plays running on http://localhost:${PORT}`);
+  console.log(`Sarvar Plays running on :${PORT}`);
+  console.log(`DATA_DIR=${DATA_DIR}`);
 });
