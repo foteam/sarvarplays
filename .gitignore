@@ -1,0 +1,7 @@
+node_modules/
+data/games.json
+data/games/
+data/thumbs/
+.env
+.DS_Store
+*.log

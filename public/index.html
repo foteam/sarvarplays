@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sarvar Plays</title>
+  <meta name="description" content="Каталог HTML-игр с мгновенным превью по ссылке" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="orb"></div>
+  <div class="wrap">
+    <header class="nav">
+      <a class="brand" href="/"><span class="logo"></span>SARVAR PLAYS</a>
+      <nav class="nav-links">
+        <a class="btn ghost" href="/admin">Admin</a>
+      </nav>
+    </header>
+    <section class="hero">
+      <h1>Play. Preview. Share.</h1>
+      <p>Аркада для HTML single-file игр. Каждая игра открывается в своём фрейме и сразу получает постоянную ссылку для превью.</p>
+      <div class="hero-meta"><div>Live catalog · <span id="count">0</span> games</div></div>
+    </section>
+    <section id="grid" class="grid"></section>
+    <div id="empty" class="empty" hidden>Пока нет игр. Зайдите в admin и загрузите HTML-файл.</div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const grid = document.getElementById("grid");
+    const empty = document.getElementById("empty");
+    const toast = document.getElementById("toast");
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1600);
+    }
+
+    function card(game) {
+      const el = document.createElement("article");
+      el.className = "card";
+      el.innerHTML = `
+        <a href="${game.playUrl}">
+          <div class="thumb"><img src="${game.thumbUrl}" alt="${game.name}" /></div>
+          <div class="card-body">
+            <h3></h3>
+            <p>Открыть превью</p>
+          </div>
+        </a>`;
+      el.querySelector("h3").textContent = game.name;
+      el.addEventListener("contextmenu", async (e) => {
+        e.preventDefault();
+        const url = location.origin + game.playUrl;
+        await navigator.clipboard.writeText(url);
+        showToast("Ссылка скопирована");
+      });
+      return el;
+    }
+
+    fetch("/api/games")
+      .then((r) => r.json())
+      .then(({ games }) => {
+        document.getElementById("count").textContent = games.length;
+        if (!games.length) empty.hidden = false;
+        games.forEach((g) => grid.append(card(g)));
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Sarvar Plays</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="orb"></div>
+  <div class="wrap">
+    <header class="nav">
+      <a class="brand" href="/"><span class="logo"></span>SARVAR PLAYS</a>
+      <nav class="nav-links">
+        <button class="btn ghost" id="logout" hidden>Logout</button>
+      </nav>
+    </header>
+
+    <section class="panel" id="login">
+      <h1>Admin</h1>
+      <p>Войдите, чтобы загружать HTML-игры и публиковать превью-ссылки.</p>
+      <label>Password</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <div style="margin-top:16px"><button class="btn primary" id="loginBtn">Enter</button></div>
+      <p id="loginErr" style="color:#f472b6"></p>
+    </section>
+
+    <section class="panel" id="studio" hidden>
+      <h1>Upload game</h1>
+      <p>Один HTML-файл. Имя задаёте вы, thumbnail снимается автоматически с кадра игры.</p>
+      <label>Name</label>
+      <input id="name" type="text" placeholder="Neon Racer" />
+      <label>HTML file</label>
+      <div class="drop" id="drop">Перетащите .html сюда или нажмите, чтобы выбрать</div>
+      <input id="file" type="file" accept=".html,.htm,text/html" hidden />
+      <div class="preview-row" id="shotRow" hidden>
+        <img id="shot" alt="thumbnail preview" />
+        <div>
+          <div id="fileMeta" style="color:var(--muted);font-size:13px"></div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" id="reshoot">Переснять кадр</button>
+            <button class="btn primary" id="publish">Опубликовать</button>
+          </div>
+        </div>
+      </div>
+      <div id="uploadErr" style="color:#f472b6"></div>
+    </section>
+
+    <section class="panel" id="library" hidden>
+      <h1>Library</h1>
+      <div class="admin-list" id="list"></div>
+    </section>
+  </div>
+  <iframe id="capture" hidden></iframe>
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    const login = document.getElementById("login");
+    const studio = document.getElementById("studio");
+    const library = document.getElementById("library");
+    const logout = document.getElementById("logout");
+    const drop = document.getElementById("drop");
+    const fileInput = document.getElementById("file");
+    const nameInput = document.getElementById("name");
+    const shot = document.getElementById("shot");
+    const shotRow = document.getElementById("shotRow");
+    const captureFrame = document.getElementById("capture");
+    const toast = document.getElementById("toast");
+    let htmlFile = null;
+    let thumbBlob = null;
+    let capturing = false;
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1600);
+    }
+
+    async function authed() {
+      const r = await fetch("/api/admin/me");
+      return r.ok;
+    }
+
+    async function enter() {
+      login.hidden = true;
+      studio.hidden = false;
+      library.hidden = false;
+      logout.hidden = false;
+      await refresh();
+    }
+
+    document.getElementById("loginBtn").onclick = async () => {
+      const r = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: document.getElementById("password").value }),
+      });
+      if (!r.ok) {
+        document.getElementById("loginErr").textContent = "Неверный пароль";
+        return;
+      }
+      enter();
+    };
+
+    logout.onclick = async () => {
+      await fetch("/api/admin/logout", { method: "POST" });
+      location.reload();
+    };
+
+    drop.onclick = () => fileInput.click();
+    drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+    drop.ondragleave = () => drop.classList.remove("over");
+    drop.ondrop = (e) => {
+      e.preventDefault();
+      drop.classList.remove("over");
+      if (e.dataTransfer.files[0]) useFile(e.dataTransfer.files[0]);
+    };
+    fileInput.onchange = () => { if (fileInput.files[0]) useFile(fileInput.files[0]); };
+
+    function useFile(file) {
+      htmlFile = file;
+      if (!nameInput.value) nameInput.value = file.name.replace(/\.html?$/i, "");
+      document.getElementById("fileMeta").textContent = `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
+      shotRow.hidden = false;
+      captureFromFile(file);
+    }
+
+    function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+    async function captureFromFile(file) {
+      capturing = true;
+      const url = URL.createObjectURL(file);
+      captureFrame.style.cssText = "position:fixed;left:-10000px;top:0;width:1280px;height:720px;border:0;background:#000;opacity:0;pointer-events:none";
+      captureFrame.hidden = false;
+      captureFrame.src = url;
+      await new Promise((resolve) => {
+        captureFrame.onload = resolve;
+        setTimeout(resolve, 2500);
+      });
+      await wait(1200);
+      try {
+        thumbBlob = await grabFrame();
+        shot.src = URL.createObjectURL(thumbBlob);
+      } catch {
+        thumbBlob = await fallbackThumb(nameInput.value || file.name);
+        shot.src = URL.createObjectURL(thumbBlob);
+      }
+      URL.revokeObjectURL(url);
+      capturing = false;
+    }
+
+    async function grabFrame() {
+      const doc = captureFrame.contentDocument;
+      const gameCanvas = doc && doc.querySelector("canvas");
+      if (gameCanvas) {
+        try {
+          const data = gameCanvas.toDataURL("image/png");
+          const res = await fetch(data);
+          return res.blob();
+        } catch {}
+      }
+      if (doc && doc.body && window.html2canvas) {
+        const canvas = await html2canvas(doc.body, {
+          width: 1280,
+          height: 720,
+          windowWidth: 1280,
+          windowHeight: 720,
+          backgroundColor: "#05060c",
+          useCORS: true,
+        });
+        return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      }
+      throw new Error("capture failed");
+    }
+
+    async function fallbackThumb(title) {
+      const c = document.createElement("canvas");
+      c.width = 1280; c.height = 720;
+      const x = c.getContext("2d");
+      const g = x.createLinearGradient(0, 0, 1280, 720);
+      g.addColorStop(0, "#12061f");
+      g.addColorStop(1, "#06141f");
+      x.fillStyle = g;
+      x.fillRect(0, 0, 1280, 720);
+      x.fillStyle = "#f8fafc";
+      x.font = "700 64px Sora, sans-serif";
+      x.textAlign = "center";
+      x.fillText(title.slice(0, 28), 640, 380);
+      return new Promise((r) => c.toBlob(r, "image/png"));
+    }
+
+    document.getElementById("reshoot").onclick = () => {
+      if (htmlFile) captureFromFile(htmlFile);
+    };
+
+    document.getElementById("publish").onclick = async () => {
+      if (!htmlFile) return;
+      if (capturing) return showToast("Кадр ещё снимается");
+      const fd = new FormData();
+      fd.append("name", nameInput.value.trim());
+      fd.append("file", htmlFile, htmlFile.name);
+      if (thumbBlob) fd.append("thumbnail", thumbBlob, "thumb.png");
+      const r = await fetch("/api/admin/games", { method: "POST", body: fd });
+      const data = await r.json();
+      if (!r.ok) {
+        document.getElementById("uploadErr").textContent = data.error || "Upload failed";
+        return;
+      }
+      showToast("Игра опубликована");
+      htmlFile = null;
+      thumbBlob = null;
+      nameInput.value = "";
+      fileInput.value = "";
+      shotRow.hidden = true;
+      drop.textContent = "Перетащите .html сюда или нажмите, чтобы выбрать";
+      refresh();
+    };
+
+    async function recapturePublished(id) {
+      captureFrame.style.cssText = "position:fixed;left:-10000px;top:0;width:1280px;height:720px;border:0;opacity:0";
+      captureFrame.hidden = false;
+      captureFrame.src = `/raw/${id}?t=${Date.now()}`;
+      await new Promise((resolve) => { captureFrame.onload = resolve; setTimeout(resolve, 2500); });
+      await wait(1200);
+      let blob;
+      try { blob = await grabFrame(); } catch { blob = await fallbackThumb(id); }
+      const fd = new FormData();
+      fd.append("thumbnail", blob, "thumb.png");
+      await fetch(`/api/admin/games/${id}/thumbnail`, { method: "POST", body: fd });
+      refresh();
+    }
+
+    async function refresh() {
+      const r = await fetch("/api/games");
+      const { games } = await r.json();
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      games.forEach((game) => {
+        const row = document.createElement("div");
+        row.className = "admin-item";
+        row.innerHTML = `
+          <img src="${game.thumbUrl}" alt="" />
+          <div>
+            <strong></strong>
+            <div style="color:var(--muted);font-size:12px">${location.origin}${game.playUrl}</div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="${game.playUrl}" target="_blank">Open</a>
+            <button class="btn" data-copy>Copy</button>
+            <button class="btn" data-shot>Thumb</button>
+            <button class="btn danger" data-del>Delete</button>
+          </div>`;
+        row.querySelector("strong").textContent = game.name;
+        row.querySelector("[data-copy]").onclick = async () => {
+          await navigator.clipboard.writeText(location.origin + game.playUrl);
+          showToast("Ссылка скопирована");
+        };
+        row.querySelector("[data-shot]").onclick = () => recapturePublished(game.id);
+        row.querySelector("[data-del]").onclick = async () => {
+          if (!confirm(`Удалить ${game.name}?`)) return;
+          await fetch(`/api/admin/games/${game.id}`, { method: "DELETE" });
+          refresh();
+        };
+        list.append(row);
+      });
+    }
+
+    authed().then((ok) => { if (ok) enter(); });
+  </script>
+</body>
+</html>

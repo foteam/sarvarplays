@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Play · Sarvar Plays</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <style>body { min-height: 100dvh; overflow: hidden; }</style>
+</head>
+<body>
+  <div class="player-shell">
+    <header class="player-bar">
+      <a class="btn ghost" href="/">← Catalog</a>
+      <div class="title" id="title">Loading…</div>
+      <div class="ratios" id="ratios"></div>
+      <button class="btn primary" id="copy">Copy link</button>
+    </header>
+    <div class="stage-wrap">
+      <div class="stage" id="stage" data-ratio="auto">
+        <iframe id="frame" allow="autoplay; fullscreen; gamepad; pointer-lock" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const id = location.pathname.split("/").pop();
+    const ratios = [
+      ["auto", "Auto"],
+      ["16/9", "16:9"],
+      ["9/16", "9:16"],
+      ["3/4", "3:4"],
+      ["4/3", "4:3"],
+      ["1/1", "1:1"],
+    ];
+    const stage = document.getElementById("stage");
+    const wrap = document.getElementById("ratios");
+    const toast = document.getElementById("toast");
+    const saved = localStorage.getItem("sp-ratio") || "auto";
+
+    function setRatio(value) {
+      stage.dataset.ratio = value;
+      localStorage.setItem("sp-ratio", value);
+      wrap.querySelectorAll(".ratio").forEach((b) => b.classList.toggle("active", b.dataset.v === value));
+    }
+
+    ratios.forEach(([value, label]) => {
+      const b = document.createElement("button");
+      b.className = "ratio";
+      b.dataset.v = value;
+      b.textContent = label;
+      b.onclick = () => setRatio(value);
+      wrap.append(b);
+    });
+    setRatio(saved);
+
+    fetch(`/api/games/${id}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("not found");
+        return r.json();
+      })
+      .then(({ game }) => {
+        document.title = `${game.name} · Sarvar Plays`;
+        document.getElementById("title").textContent = game.name;
+        document.getElementById("frame").src = `/raw/${game.id}`;
+      })
+      .catch(() => {
+        document.getElementById("title").textContent = "Game not found";
+      });
+
+    document.getElementById("copy").onclick = async () => {
+      await navigator.clipboard.writeText(location.href);
+      toast.textContent = "Ссылка скопирована";
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1400);
+    };
+  </script>
+</body>
+</html>
