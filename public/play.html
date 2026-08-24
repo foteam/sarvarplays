@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Play · Sarvar Plays</title>
+  <title>Play · Sarvarbek Jakhongirov</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
   <style>body { min-height: 100dvh; overflow: hidden; }</style>
 </head>
 <body>
   <div class="player-shell">
     <header class="player-bar">
-      <a class="btn ghost" href="/">← Catalog</a>
+      <a class="btn ghost" href="/">← Portfolio</a>
       <div class="title" id="title">Loading…</div>
       <div class="ratios" id="ratios"></div>
       <button class="btn primary" id="copy">Copy link</button>
@@ -62,7 +62,7 @@
         return r.json();
       })
       .then(({ game }) => {
-        document.title = `${game.name} · Sarvar Plays`;
+        document.title = `${game.name} · Sarvarbek Jakhongirov`;
         document.getElementById("title").textContent = game.name;
         document.getElementById("frame").src = `/raw/${game.id}`;
       })

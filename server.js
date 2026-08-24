@@ -250,14 +250,15 @@ app.get("/media/:id/thumb.svg", (req, res) => {
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#12061f"/>
-      <stop offset="1" stop-color="#06141f"/>
+      <stop offset="0" stop-color="#05070a"/>
+      <stop offset="1" stop-color="#08151a"/>
     </linearGradient>
   </defs>
   <rect width="1280" height="720" fill="url(#g)"/>
-  <circle cx="980" cy="160" r="220" fill="#7c5cff" opacity=".18"/>
-  <circle cx="240" cy="560" r="260" fill="#22d3ee" opacity=".12"/>
-  <text x="640" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-size="64" fill="#f8fafc" font-weight="700">${label}</text>
+  <rect x="0" y="0" width="1280" height="720" fill="none" stroke="#00ffe0" stroke-opacity=".35"/>
+  <circle cx="980" cy="160" r="220" fill="#ff2bd6" opacity=".2"/>
+  <circle cx="240" cy="560" r="260" fill="#00ffe0" opacity=".14"/>
+  <text x="640" y="370" text-anchor="middle" font-family="Orbitron, Arial, sans-serif" font-size="56" fill="#00ffe0" font-weight="700">${label}</text>
 </svg>`;
   res.setHeader("Cache-Control", "no-store");
   res.type("svg").send(svg);
