@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Chakra+Petch:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=20260824" />
+  <link rel="stylesheet" href="/styles.css?v=20261003" />
   <style>body { height: 100dvh; overflow: hidden; }</style>
 </head>
 <body>
@@ -15,6 +15,7 @@
     <header class="player-bar">
       <a class="btn ghost" href="/">← Portfolio</a>
       <div class="title" id="title">Loading…</div>
+      <select class="version" id="version" aria-label="Версия сборки" hidden></select>
       <div class="ratios" id="ratios"></div>
       <button class="btn primary" id="copy">Copy link</button>
     </header>
@@ -64,7 +65,29 @@
       .then(({ game }) => {
         document.title = `${game.name} · Sarvarbek Jakhongirov`;
         document.getElementById("title").textContent = game.name;
-        document.getElementById("frame").src = `/raw/${game.id}`;
+
+        const versions = game.versions?.length ? game.versions : [{ id: "main", label: "Main", url: `/raw/${game.id}` }];
+        const frame = document.getElementById("frame");
+        const select = document.getElementById("version");
+        const wanted = new URLSearchParams(location.search).get("v");
+        const initial = versions.find((v) => v.id === wanted) || versions[0];
+
+        function play(version, updateUrl) {
+          frame.src = version.url;
+          select.value = version.id;
+          if (updateUrl) {
+            const url = new URL(location.href);
+            url.searchParams.set("v", version.id);
+            history.replaceState(null, "", url);
+          }
+        }
+
+        if (versions.length > 1) {
+          versions.forEach((v) => select.append(new Option(v.label, v.id)));
+          select.hidden = false;
+          select.onchange = () => play(versions.find((v) => v.id === select.value), true);
+        }
+        play(initial, false);
       })
       .catch(() => {
         document.getElementById("title").textContent = "Game not found";

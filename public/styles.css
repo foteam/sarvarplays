@@ -594,6 +594,39 @@ input:focus, textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 1px v
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.version {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 240px;
+  background: #050a12
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%234df3ff' stroke-width='1.4'/%3E%3C/svg%3E")
+    no-repeat right 12px center / 10px 6px;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  padding: 8px 34px 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  outline: none;
+}
+.version:hover, .version:focus { border-color: var(--cyan); box-shadow: 0 0 14px rgba(77, 243, 255, 0.2); }
+.version option { background: #050a12; color: var(--text); }
+
+.card-builds {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 1;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #04060c;
+  background: var(--lime);
+  padding: 3px 7px;
+}
+
 .ratios {
   display: flex;
   gap: 0;

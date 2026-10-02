@@ -1,8 +1,7 @@
 node_modules/
-data/games.json
-data/profile.json
-data/games/
-data/thumbs/
+data/
+.netlify/
 .env
 .DS_Store
 *.log
+deno.lock

@@ -1,0 +1,46 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/play/*"
+  to = "/play.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/play.html"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/admin.html"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/games/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/thumbs/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

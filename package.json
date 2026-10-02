@@ -2,18 +2,15 @@
   "name": "sarvarplays",
   "version": "1.0.0",
   "private": true,
-  "description": "Modern single-file HTML game arcade with shareable preview links",
-  "main": "server.js",
+  "type": "module",
+  "description": "Cyberpunk portfolio of single-file HTML games with shareable preview links",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "netlify dev"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "cookie-parser": "^1.4.7",
-    "express": "^4.21.2",
-    "multer": "^2.0.2"
+    "@netlify/blobs": "^8.1.0"
   }
 }

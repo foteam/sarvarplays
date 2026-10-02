@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Chakra+Petch:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=20260824" />
+  <link rel="stylesheet" href="/styles.css?v=20261003" />
 </head>
 <body>
   <div class="wrap">
@@ -195,7 +195,14 @@
     };
     fileInput.onchange = () => { if (fileInput.files[0]) useFile(fileInput.files[0]); };
 
+    const MAX_HTML_BYTES = 5 * 1024 * 1024;
+
     function useFile(file) {
+      if (file.size > MAX_HTML_BYTES) {
+        document.getElementById("uploadErr").textContent = "Файл больше 5 МБ — Netlify Functions не примут его.";
+        return;
+      }
+      document.getElementById("uploadErr").textContent = "";
       htmlFile = file;
       if (!nameInput.value) nameInput.value = file.name.replace(/\.html?$/i, "");
       document.getElementById("fileMeta").textContent = `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
@@ -279,7 +286,7 @@
       fd.append("file", htmlFile, htmlFile.name);
       if (thumbBlob) fd.append("thumbnail", thumbBlob, "thumb.png");
       const r = await fetch("/api/admin/games", { method: "POST", body: fd });
-      const data = await r.json();
+      const data = await r.json().catch(() => ({ error: `Upload failed (${r.status})` }));
       if (!r.ok) {
         document.getElementById("uploadErr").textContent = data.error || "Upload failed";
         return;
@@ -325,14 +332,19 @@
           <div class="actions">
             <a class="btn" href="${game.playUrl}" target="_blank">Open</a>
             <button class="btn" data-copy>Copy</button>
-            <button class="btn" data-shot>Thumb</button>
-            <button class="btn danger" data-del>Delete</button>
+            ${game.featured ? "" : `<button class="btn" data-shot>Thumb</button><button class="btn danger" data-del>Delete</button>`}
           </div>`;
-        row.querySelector("strong").textContent = game.name;
+        row.querySelector("strong").textContent = game.featured
+          ? `${game.name} · ${game.versions.length} builds`
+          : game.name;
         row.querySelector("[data-copy]").onclick = async () => {
           await navigator.clipboard.writeText(location.origin + game.playUrl);
           showToast("Ссылка скопирована");
         };
+        if (game.featured) {
+          list.append(row);
+          return;
+        }
         row.querySelector("[data-shot]").onclick = () => recapturePublished(game.id);
         row.querySelector("[data-del]").onclick = async () => {
           if (!confirm(`Удалить ${game.name}?`)) return;

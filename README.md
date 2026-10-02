@@ -6,27 +6,35 @@ Cyberpunk-портфолио HTML single-file игр: загрузка чере�
 
 - Каталог с карточками и thumbnail
 - Страница игры с ориентациями: **Auto, 16:9, 9:16, 3:4, 4:3, 1:1**
-- Админка: имя + HTML-файл, кадр снимается автоматически из файла
+- Админка: игры (имя + HTML-файл, кадр снимается автоматически), профиль, стек, соцсети
 - Ссылка вида `/play/pulse-orbit` — можно шарить превью
+
+## Как устроено
+
+- `public/` — статические страницы
+- `public/games/<игра>/<сборка>.html` и `public/thumbs/<игра>.jpg` — встроенные игры портфолио
+- `netlify/functions/featured.mjs` — список встроенных игр и их сборок (версии в плеере, ссылка `?v=<сборка>`)
+- `netlify/functions/api.mjs` — API, `/raw/<id>` и `/media/<id>/…`
+- Игры, загруженные через админку, превью и профиль хранятся в **Netlify Blobs** — без базы и volume
+
+Встроенные игры не удаляются из админки — меняются через репозиторий. У них нет лимита в 5 МБ.
 
 ## Локальный запуск
 
 ```bash
 npm install
-cp .env.example .env
-npm start
+npx netlify-cli dev
 ```
 
-Откройте [http://localhost:3000](http://localhost:3000). Админка: `/admin`. Пароль по умолчанию: `admin` (смените `ADMIN_PASSWORD`).
+Откройте адрес, который покажет CLI (обычно [http://localhost:8888](http://localhost:8888)). Админка: `/admin`, пароль по умолчанию `admin`.
 
-## Деплой на Railway через GitHub
+## Деплой на Netlify через GitHub
 
-1. Railway: **New Project → Deploy from GitHub repo** → `foteam/sarvarplays`.
-2. В **Settings** сервиса ветка должна быть **`master`** (не `main`), Autodeploy включён.
-3. Переменная: `ADMIN_PASSWORD`.
-4. Volume, чтобы игры и профиль не стирались:
-   - Mount path: `/app/data`
-   - Variable: `DATA_DIR=/app/data`
-5. После пуша откройте **Deployments**. Если новый коммит не стартовал: `Cmd+K` → **Deploy Latest Commit**.
+1. [app.netlify.com](https://app.netlify.com) → **Add new site → Import an existing project** → GitHub → `foteam/sarvarplays`.
+2. Branch: `master`. Build command — пусто, publish directory и functions подхватятся из `netlify.toml`.
+3. **Site configuration → Environment variables**:
+   - `ADMIN_PASSWORD` — пароль админки
+   - `SESSION_SECRET` — длинная случайная строка
+4. **Deploy**. Дальше каждый `git push` в `master` деплоит сайт сам.
 
-Сайт: `https://your-app.up.railway.app`. Игры: `/play/<id>`.
+Ограничение: HTML-файл игры — до 5 МБ (лимит тела запроса Netlify Functions).
